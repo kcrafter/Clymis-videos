@@ -3,24 +3,14 @@ const feed = document.querySelector("#video-feed");
 const template = document.querySelector("#video-template");
 const clearButton = document.querySelector("#clear-feed");
 
-const STORAGE_KEY = "clymis-video-posts";
-
-const posts = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
-
 const formatDate = (isoDate) =>
   new Date(isoDate).toLocaleString([], {
     dateStyle: "medium",
     timeStyle: "short",
   });
 
-function savePosts() {
-  const serializable = posts.filter((post) => post.sourceType !== "file");
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(serializable));
-}
-
 function renderPost(post) {
   const clone = template.content.cloneNode(true);
-  const card = clone.querySelector(".video-post");
   const video = clone.querySelector("video");
 
   video.src = post.videoUrl;
@@ -29,35 +19,30 @@ function renderPost(post) {
   clone.querySelector(".post-description").textContent = post.description || "No description.";
   clone.querySelector(".post-meta").textContent = `Posted ${formatDate(post.createdAt)}`;
 
-  if (post.sourceType === "file") {
-    card.dataset.temporary = "true";
-  }
-
-  feed.prepend(clone);
+  feed.append(clone);
 }
 
-function restoreFeed() {
+function showEmptyState() {
+  feed.innerHTML = "<p>No videos yet — post the first one.</p>";
+}
+
+async function loadPosts() {
+  const response = await fetch("/api/posts");
+  if (!response.ok) {
+    throw new Error("Could not load posts.");
+  }
+
+  const posts = await response.json();
   if (posts.length === 0) {
-    feed.innerHTML = "<p>No videos yet — post the first one.</p>";
+    showEmptyState();
     return;
   }
 
   feed.innerHTML = "";
-  posts.forEach(renderPost);
+  posts.reverse().forEach(renderPost);
 }
 
-function makePost({ title, description, videoUrl, mimeType, sourceType }) {
-  return {
-    title,
-    description,
-    videoUrl,
-    mimeType,
-    sourceType,
-    createdAt: new Date().toISOString(),
-  };
-}
-
-form.addEventListener("submit", (event) => {
+form.addEventListener("submit", async (event) => {
   event.preventDefault();
 
   const title = form.title.value.trim();
@@ -75,44 +60,45 @@ form.addEventListener("submit", (event) => {
     return;
   }
 
-  if (feed.textContent.includes("No videos yet")) {
-    feed.innerHTML = "";
-  }
+  const body = new FormData();
+  body.set("title", title);
+  body.set("description", description);
 
   if (file) {
-    const objectUrl = URL.createObjectURL(file);
-    const post = makePost({
-      title,
-      description,
-      videoUrl: objectUrl,
-      mimeType: file.type,
-      sourceType: "file",
-    });
+    body.set("videoFile", file);
+  } else {
+    body.set("videoUrl", url);
+  }
 
-    posts.push(post);
-    renderPost(post);
-    form.reset();
+  const response = await fetch("/api/posts", {
+    method: "POST",
+    body,
+  });
+
+  if (!response.ok) {
+    const payload = await response.json().catch(() => ({}));
+    alert(payload.error || "Could not save video.");
     return;
   }
 
-  const post = makePost({
-    title,
-    description,
-    videoUrl: url,
-    mimeType: "video/mp4",
-    sourceType: "url",
-  });
-
-  posts.push(post);
+  const post = await response.json();
+  if (feed.textContent.includes("No videos yet")) {
+    feed.innerHTML = "";
+  }
   renderPost(post);
-  savePosts();
   form.reset();
 });
 
-clearButton.addEventListener("click", () => {
-  posts.length = 0;
-  localStorage.removeItem(STORAGE_KEY);
-  feed.innerHTML = "<p>No videos yet — post the first one.</p>";
+clearButton.addEventListener("click", async () => {
+  const response = await fetch("/api/posts", { method: "DELETE" });
+  if (!response.ok) {
+    alert("Could not clear feed.");
+    return;
+  }
+  showEmptyState();
 });
 
-restoreFeed();
+loadPosts().catch(() => {
+  showEmptyState();
+  alert("Could not connect to the server.");
+});
