@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Clymis Videos</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="site-header">
+      <h1>Clymis Videos</h1>
+      <p>Post and watch videos in your own feed.</p>
+    </header>
+
+    <main class="container">
+      <section class="card">
+        <h2>Post a video</h2>
+        <form id="video-form">
+          <label for="title">Title</label>
+          <input id="title" name="title" type="text" required maxlength="80" />
+
+          <label for="description">Description</label>
+          <textarea id="description" name="description" rows="3" maxlength="240"></textarea>
+
+          <label for="video-url">Video URL (MP4/WebM/Ogg)</label>
+          <input id="video-url" name="video-url" type="url" placeholder="https://example.com/video.mp4" />
+
+          <label for="video-file">or upload a video file</label>
+          <input id="video-file" name="video-file" type="file" accept="video/*" />
+
+          <button type="submit">Post video</button>
+        </form>
+      </section>
+
+      <section class="card">
+        <div class="feed-header">
+          <h2>Video feed</h2>
+          <button id="clear-feed" class="danger" type="button">Clear feed</button>
+        </div>
+        <div id="video-feed" class="feed"></div>
+      </section>
+    </main>
+
+    <template id="video-template">
+      <article class="video-post">
+        <video controls preload="metadata"></video>
+        <h3 class="post-title"></h3>
+        <p class="post-description"></p>
+        <div class="post-meta"></div>
+      </article>
+    </template>
+
+    <script src="script.js"></script>
+  </body>
+</html>
